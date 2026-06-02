@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>聯絡人管理系統</title>
+  <style>
+    /* ====== 全域樣式 ====== */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f0f4f8;
+      color: #333;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #1e3a5f;
+      color: white;
+      padding: 18px 32px;
+      font-size: 22px;
+      font-weight: bold;
+      letter-spacing: 1px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 32px auto;
+      padding: 0 16px;
+    }
+
+    /* ====== 表單區 ====== */
+    .form-card {
+      background: white;
+      border-radius: 10px;
+      padding: 24px 28px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      margin-bottom: 28px;
+    }
+
+    .form-card h2 {
+      font-size: 16px;
+      color: #1e3a5f;
+      margin-bottom: 16px;
+      border-left: 4px solid #1e90ff;
+      padding-left: 10px;
+    }
+
+    .form-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .form-row label {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      font-size: 14px;
+      color: #555;
+      gap: 6px;
+    }
+
+    .form-row label.narrow { flex: 0 0 110px; }
+    .form-row label.wide   { flex: 2; }
+
+    .required-star { color: #dc3545; margin-left: 2px; }
+
+    .form-row input,
+    .form-row select {
+      padding: 10px 12px;
+      border: 1.5px solid #cdd5e0;
+      border-radius: 6px;
+      font-size: 15px;
+      transition: border 0.2s;
+      background: white;
+    }
+
+    .form-row input:focus,
+    .form-row select:focus {
+      outline: none;
+      border-color: #1e90ff;
+    }
+
+    .input-error {
+      border-color: #dc3545 !important;
+      background-color: #fff8f8 !important;
+    }
+
+    /* ====== 按鈕區 ====== */
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+
+    button:active:not(:disabled) { transform: scale(0.97); }
+    button:hover:not(:disabled)  { opacity: 0.88; }
+
+    .btn-submit { background: #28a745; color: white; }
+    .btn-edit   { background: #fd7e14; color: white; }
+    .btn-delete { background: #dc3545; color: white; }
+
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      opacity: 1;
+    }
+
+    /* ====== 狀態提示 ====== */
+    #statusMsg {
+      margin-top: 12px;
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .msg-success { background: #d4edda; color: #155724; display: block !important; }
+    .msg-error   { background: #f8d7da; color: #721c24; display: block !important; }
+
+    /* ====== 資料列表 ====== */
+    .list-card {
+      background: white;
+      border-radius: 10px;
+      padding: 24px 28px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .list-card h2 {
+      font-size: 16px;
+      color: #1e3a5f;
+      margin-bottom: 16px;
+      border-left: 4px solid #28a745;
+      padding-left: 10px;
+    }
+
+    .table-wrapper { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      min-width: 1200px;
+    }
+
+    thead tr { background: #1e3a5f; color: white; }
+    thead th { padding: 11px 12px; text-align: left; font-weight: 600; white-space: nowrap; }
+
+    tbody tr {
+      border-bottom: 1px solid #eef0f3;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    tbody tr:hover           { background: #eef4ff; }
+    tbody tr.selected        { background: #d0e8ff; }
+    tbody td                 { padding: 10px 12px; white-space: nowrap; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+    tbody td:first-child     { color: #999; font-size: 13px; }
+
+    .empty-msg {
+      text-align: center;
+      color: #aaa;
+      padding: 30px;
+      font-size: 15px;
+    }
+
+    /* ====== 模式標示 ====== */
+    .mode-badge {
+      display: inline-block;
+      font-size: 12px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      margin-left: 10px;
+      vertical-align: middle;
+    }
+
+    .mode-new  { background: #cce5ff; color: #004085; }
+    .mode-edit { background: #ffe5cc; color: #7a3800; }
+
+    /* ====== 重複提醒視窗 ====== */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.45);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.active { display: flex; }
+
+    .modal-box {
+      background: white;
+      border-radius: 10px;
+      padding: 28px 32px;
+      max-width: 380px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+    }
+    .modal-box .modal-icon { font-size: 44px; margin-bottom: 12px; }
+    .modal-box h3 { color: #1e3a5f; margin-bottom: 8px; font-size: 17px; }
+    .modal-box p  { color: #555; font-size: 14px; margin-bottom: 20px; line-height: 1.6; }
+    .modal-box .btn-confirm {
+      background: #1e90ff; color: white;
+      border: none; border-radius: 6px;
+      padding: 10px 32px; font-size: 14px; font-weight: bold; cursor: pointer;
+    }
+    .modal-box .btn-confirm:hover { opacity: 0.88; }
+  </style>
+</head>
+<body>
+
+<header>📋 聯絡人管理系統</header>
+
+<!-- 重複行動電話提醒視窗 -->
+<div id="dupModal" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-icon">⚠️</div>
+    <h3>行動電話號碼重複</h3>
+    <p>此行動電話號碼已存在於聯絡人列表中，<br>無法新增重複資料。</p>
+    <button class="btn-confirm" onclick="closeDupModal()">確定</button>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- 操作表單 -->
+  <div class="form-card">
+    <h2>
+      資料輸入
+      <span id="modeBadge" class="mode-badge mode-new">新增模式</span>
+    </h2>
+
+    <!-- 必填：姓名、行動電話 -->
+    <div class="form-row">
+      <label>
+        姓名<span class="required-star">*</span>
+        <input type="text" id="inputName" placeholder="請輸入姓名" />
+      </label>
+      <label>
+        行動電話<span class="required-star">*</span>
+        <input type="text" id="inputPhone" placeholder="09xxxxxxxx（10碼）" maxlength="10" />
+      </label>
+    </div>
+
+    <!-- 選填：公司電話、分機、住家電話 -->
+    <div class="form-row">
+      <label>
+        公司電話
+        <input type="text" id="inputCompanyPhone" placeholder="公司電話" />
+      </label>
+      <label class="narrow">
+        分機
+        <input type="text" id="inputCompanyExt" placeholder="分機" />
+      </label>
+      <label>
+        住家電話
+        <input type="text" id="inputHomePhone" placeholder="住家電話" />
+      </label>
+    </div>
+
+    <!-- 選填：地址 -->
+    <div class="form-row">
+      <label>
+        地址
+        <input type="text" id="inputAddress" placeholder="請輸入地址" />
+      </label>
+    </div>
+
+    <!-- 選填：Email、生日、性別 -->
+    <div class="form-row">
+      <label class="wide">
+        Email
+        <input type="text" id="inputEmail" placeholder="example@email.com" />
+      </label>
+      <label>
+        生日（年/月/日）
+        <input type="date" id="inputBirthday" />
+      </label>
+      <label class="narrow">
+        性別
+        <select id="inputGender">
+          <option value="">請選擇</option>
+          <option value="男">男</option>
+          <option value="女">女</option>
+          <option value="其他">其他</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-submit" id="btnSubmit" onclick="handleSubmit()">✔ 送出</button>
+      <button class="btn-edit"   id="btnEdit"   onclick="handleEdit()"   disabled>✏ 修改</button>
+      <button class="btn-delete" id="btnDelete" onclick="handleDelete()" disabled>✕ 刪除</button>
+    </div>
+
+    <div id="statusMsg"></div>
+  </div>
+
+  <!-- 資料列表 -->
+  <div class="list-card">
+    <h2>聯絡人列表</h2>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>姓名</th>
+            <th>行動電話</th>
+            <th>公司電話(分機)</th>
+            <th>住家電話</th>
+            <th>地址</th>
+            <th>Email</th>
+            <th>生日</th>
+            <th>性別</th>
+            <th>建立時間</th>
+            <th>修改時間</th>
+          </tr>
+        </thead>
+        <tbody id="contactList">
+          <tr><td colspan="11" class="empty-msg">載入中...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ============================================================
+// 狀態管理
+// ============================================================
+let selectedId  = null;
+let currentMode = 'new';
+let contacts    = [];
+
+// ============================================================
+// 工具函式
+// ============================================================
+
+function showMsg(text, type) {
+  const el = document.getElementById('statusMsg');
+  el.textContent = text;
+  el.className   = type === 'success' ? 'msg-success' : 'msg-error';
+  setTimeout(() => { el.className = ''; }, 3000);
+}
+
+// UTC 字串轉台北時間顯示
+function toTaipeiTime(utcStr) {
+  if (!utcStr) return '-';
+  const d = new Date(utcStr.replace(' ', 'T') + 'Z');
+  return d.toLocaleString('zh-TW', {
+    timeZone: 'Asia/Taipei',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false
+  });
+}
+
+// 生日格式：YYYY-MM-DD → YYYY/MM/DD
+function formatBirthday(str) {
+  if (!str) return '';
+  return str.replace(/-/g, '/');
+}
+
+// HTML 跳脫，防止 XSS
+function escHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function getFormData() {
+  return {
+    name:          document.getElementById('inputName').value.trim(),
+    phone:         document.getElementById('inputPhone').value.trim(),
+    company_phone: document.getElementById('inputCompanyPhone').value.trim(),
+    company_ext:   document.getElementById('inputCompanyExt').value.trim(),
+    home_phone:    document.getElementById('inputHomePhone').value.trim(),
+    address:       document.getElementById('inputAddress').value.trim(),
+    email:         document.getElementById('inputEmail').value.trim(),
+    birthday:      document.getElementById('inputBirthday').value,
+    gender:        document.getElementById('inputGender').value,
+  };
+}
+
+function clearForm() {
+  ['inputName','inputPhone','inputCompanyPhone','inputCompanyExt',
+   'inputHomePhone','inputAddress','inputEmail','inputBirthday'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('inputGender').value = '';
+  document.getElementById('inputPhone').classList.remove('input-error');
+  document.getElementById('inputEmail').classList.remove('input-error');
+}
+
+// 驗證行動電話：09 開頭 10 碼數字
+function validatePhone(phone) {
+  return /^09\d{8}$/.test(phone);
+}
+
+// 驗證 Email：含有 @（空值視為合法）
+function validateEmail(email) {
+  return email === '' || email.includes('@');
+}
+
+// ============================================================
+// 模式切換
+// ============================================================
+
+function setMode(mode) {
+  currentMode = mode;
+  const badge     = document.getElementById('modeBadge');
+  const btnSubmit = document.getElementById('btnSubmit');
+  const btnEdit   = document.getElementById('btnEdit');
+  const btnDelete = document.getElementById('btnDelete');
+
+  if (mode === 'edit') {
+    badge.textContent      = '修改模式';
+    badge.className        = 'mode-badge mode-edit';
+    btnSubmit.disabled     = true;   // 修改模式：送出鍵灰掉
+    btnEdit.disabled       = false;
+    btnDelete.disabled     = false;
+  } else {
+    badge.textContent      = '新增模式';
+    badge.className        = 'mode-badge mode-new';
+    btnSubmit.disabled     = false;
+    btnEdit.disabled       = true;
+    btnDelete.disabled     = true;
+    selectedId             = null;
+    clearForm();
+    document.querySelectorAll('tbody tr').forEach(r => r.classList.remove('selected'));
+  }
+}
+
+// ============================================================
+// 資料讀取
+// ============================================================
+
+async function loadContacts() {
+  const res = await fetch('/contacts');
+  contacts  = await res.json();
+  renderTable();
+}
+
+function renderTable() {
+  const tbody = document.getElementById('contactList');
+
+  if (contacts.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="11" class="empty-msg">目前沒有聯絡人資料</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = contacts.map(c => {
+    const companyDisplay = c.company_phone
+      ? (c.company_ext ? `${c.company_phone}(${c.company_ext})` : c.company_phone)
+      : (c.company_ext ? `(${c.company_ext})` : '');
+
+    return `
+      <tr data-id="${c.id}" onclick="selectRow(this, ${c.id})">
+        <td>#${c.id}</td>
+        <td>${escHtml(c.name)}</td>
+        <td>${escHtml(c.phone)}</td>
+        <td>${escHtml(companyDisplay)}</td>
+        <td>${escHtml(c.home_phone || '')}</td>
+        <td>${escHtml(c.address || '')}</td>
+        <td>${escHtml(c.email || '')}</td>
+        <td>${formatBirthday(c.birthday)}</td>
+        <td>${escHtml(c.gender || '')}</td>
+        <td>${toTaipeiTime(c.created_at)}</td>
+        <td>${toTaipeiTime(c.updated_at)}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// ============================================================
+// 點選列：第一次點 → 修改模式；再次點同一列 → 新增模式
+// ============================================================
+
+function selectRow(row, id) {
+  // 再次點擊已選取的列 → 回到新增模式
+  if (row.classList.contains('selected')) {
+    setMode('new');
+    return;
+  }
+
+  const contact = contacts.find(c => c.id === id);
+  if (!contact) return;
+
+  document.querySelectorAll('tbody tr').forEach(r => r.classList.remove('selected'));
+  row.classList.add('selected');
+  selectedId = id;
+
+  // 填入表單
+  document.getElementById('inputName').value         = contact.name || '';
+  document.getElementById('inputPhone').value        = contact.phone || '';
+  document.getElementById('inputCompanyPhone').value = contact.company_phone || '';
+  document.getElementById('inputCompanyExt').value   = contact.company_ext || '';
+  document.getElementById('inputHomePhone').value    = contact.home_phone || '';
+  document.getElementById('inputAddress').value      = contact.address || '';
+  document.getElementById('inputEmail').value        = contact.email || '';
+  document.getElementById('inputBirthday').value     = contact.birthday || '';
+  document.getElementById('inputGender').value       = contact.gender || '';
+
+  // 清除殘留驗證錯誤
+  document.getElementById('inputPhone').classList.remove('input-error');
+  document.getElementById('inputEmail').classList.remove('input-error');
+
+  setMode('edit');
+}
+
+// ============================================================
+// 即時驗證
+// ============================================================
+
+document.getElementById('inputPhone').addEventListener('input', function () {
+  if (this.value === '' || validatePhone(this.value)) {
+    this.classList.remove('input-error');
+  } else {
+    this.classList.add('input-error');
+  }
+});
+
+document.getElementById('inputEmail').addEventListener('input', function () {
+  if (validateEmail(this.value)) {
+    this.classList.remove('input-error');
+  } else {
+    this.classList.add('input-error');
+  }
+});
+
+// ============================================================
+// 重複提醒視窗
+// ============================================================
+
+function closeDupModal() {
+  document.getElementById('dupModal').classList.remove('active');
+}
+
+// ============================================================
+// 按鈕動作
+// ============================================================
+
+// 前端共用驗證
+function validateForm(data) {
+  if (!data.name) { showMsg('❌ 請填寫姓名', 'error'); return false; }
+  if (!data.phone) { showMsg('❌ 請填寫行動電話', 'error'); return false; }
+  if (!validatePhone(data.phone)) {
+    document.getElementById('inputPhone').classList.add('input-error');
+    showMsg('❌ 行動電話格式錯誤（須為 09 開頭 10 碼數字）', 'error');
+    return false;
+  }
+  if (!validateEmail(data.email)) {
+    document.getElementById('inputEmail').classList.add('input-error');
+    showMsg('❌ Email 格式錯誤（須包含 @）', 'error');
+    return false;
+  }
+  return true;
+}
+
+// 【送出】新增模式專用
+async function handleSubmit() {
+  const data = getFormData();
+  if (!validateForm(data)) return;
+
+  const res    = await fetch('/contacts', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(data)
+  });
+  const result = await res.json();
+
+  if (res.status === 409) {
+    document.getElementById('dupModal').classList.add('active');
+    return;
+  }
+  if (res.ok) {
+    showMsg(`✅ 已新增：${data.name}`, 'success');
+    setMode('new');
+    loadContacts();
+  } else {
+    showMsg(`❌ 錯誤：${result.error}`, 'error');
+  }
+}
+
+// 【修改】修改模式專用
+async function handleEdit() {
+  const data = getFormData();
+  if (!validateForm(data)) return;
+
+  const res    = await fetch(`/contacts/${selectedId}`, {
+    method:  'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(data)
+  });
+  const result = await res.json();
+
+  if (res.ok) {
+    showMsg(`✅ 已修改 #${selectedId}`, 'success');
+    setMode('new');
+    loadContacts();
+  } else {
+    showMsg(`❌ 錯誤：${result.error}`, 'error');
+  }
+}
+
+// 【刪除】
+async function handleDelete() {
+  if (!selectedId) return;
+  if (!confirm(`確定要刪除 #${selectedId} 嗎？`)) return;
+
+  const res    = await fetch(`/contacts/${selectedId}`, { method: 'DELETE' });
+  const result = await res.json();
+
+  if (res.ok) {
+    showMsg(`🗑 已刪除 #${selectedId}`, 'success');
+    setMode('new');
+    loadContacts();
+  } else {
+    showMsg(`❌ 錯誤：${result.error}`, 'error');
+  }
+}
+
+// ============================================================
+// 頁面載入時初始化
+// ============================================================
+loadContacts();
+</script>
+</body>
+</html>
